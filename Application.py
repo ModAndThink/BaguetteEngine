@@ -1,8 +1,8 @@
-from Library import tkinter as tk
+from BaguetteEngine.Library import tkinter as tk
 from math import *
-from Library.random import *
-from Library import keyboard
-from Library import mouse
+from BaguetteEngine.Library.random import *
+from BaguetteEngine.Library import keyboard
+from BaguetteEngine.Library import mouse
 import time
 
 colorList = ["red","blue","green","yellow","purple","white","pink"]
@@ -10,11 +10,11 @@ grid = []
 
 class GUI(object):
     instances = []
-    def __init__(self,text="Text",visible=True,police_size=16,police = "Arial Bold",order = 0,position = [0,0],align="center",size=[20,10],color_background="white",text_color="green",image= None):
+    def __init__(self,text="Text",visible=True,background_enable=True,police_size=6,police = "Arial Bold",order = 0,x=0,y=0,align="center",size=[20,10],color_background="white",text_color="green",image= "Texture/BoredStone.png"):
         self.text = text
         self.visible = visible
         self.order = order
-        self.position = position
+        self.position = [x,y]
         self.align = align
         self.size = size
         self.color_background = color_background
@@ -22,20 +22,60 @@ class GUI(object):
         self.police = police
         self.police_size = police_size
         self.image = image
+        self.clicked = False
+        self.background_enable=background_enable
         self.__class__.instances.append(self)
-    def start(self):
+    def start(self,app):
         pass
     def drawn(self,app):
         pass
-    def update(self):
+    def update(self,app):
         pass
 
 class Label(GUI):
     def drawn(self,app):
-        app.canvas.create_rectangle(self.position[0],self.position[1],
-                             self.position[0]+self.size[0]*app.ratio_sc_x,self.position[1]+self.size[1]*app.ratio_sc_y,fill=self.color_background)
-        app.canvas.create_text(self.position[0]+(self.size[0]*app.ratio_sc_x)/2,
-                               self.position[1]+(self.size[1]*app.ratio_sc_y)/2,font=(self.police, self.police_size),text=self.text,fill='green')
+        if self.visible == True:
+            m = int((app.ratio_sc_y+app.ratio_sc_x)/2)
+            if m <=0:
+                m=1
+            if self.background_enable:
+                app.canvas.create_rectangle(self.position[0]*app.ratio_sc_x,self.position[1]*app.ratio_sc_y,
+                                     self.position[0]*app.ratio_sc_x+self.size[0]*app.ratio_sc_x,self.position[1]*app.ratio_sc_y+self.size[1]*app.ratio_sc_y,fill=self.color_background)
+            app.canvas.create_text(self.position[0]*app.ratio_sc_x+(self.size[0]*app.ratio_sc_x)/2,
+                                   self.position[1]*app.ratio_sc_y+(self.size[1]*app.ratio_sc_y)/2,font=(self.police, self.police_size*m),text=self.text,fill=self.text_color)
+
+class Button(GUI):
+    def drawn(self,app):
+        if mouse.is_pressed(button='left'):
+            pos_mouse = mouse.get_position()
+            if pos_mouse[0] > app.screen.winfo_rootx()+self.position[0]*app.ratio_sc_x and pos_mouse[1] > app.screen.winfo_rooty()+self.position[1]*app.ratio_sc_y and pos_mouse[0] < app.screen.winfo_rootx()+self.position[0]*app.ratio_sc_x+self.size[0]*app.ratio_sc_x and pos_mouse[1] < app.screen.winfo_rooty()+self.position[1]*app.ratio_sc_y+self.size[1]*app.ratio_sc_y:
+                if self.clicked == False:
+                    self.OnClick(app)
+                self.clicked = True
+        else:
+            self.clicked = False
+        if self.visible == True:
+            m = int((app.ratio_sc_y+app.ratio_sc_x)/2)
+            if m <=0:
+                m=1
+            app.canvas.create_rectangle(self.position[0]*app.ratio_sc_x,self.position[1]*app.ratio_sc_y,
+                                 self.position[0]*app.ratio_sc_x+self.size[0]*app.ratio_sc_x,self.position[1]*app.ratio_sc_y+self.size[1]*app.ratio_sc_y,fill=self.color_background)
+            app.canvas.create_text(self.position[0]*app.ratio_sc_x+(self.size[0]*app.ratio_sc_x)/2,
+                                   self.position[1]*app.ratio_sc_y+(self.size[1]*app.ratio_sc_y)/2,font=(self.police, self.police_size*m),text=self.text,fill=self.text_color)
+    def OnClick(self,app):
+        print("HELOO")
+#feature still in developpement. DONT USE!
+class Image(GUI):
+    def drawn(self,app):
+        if self.visible == True:
+            try:
+                from PIL import Image, ImageTk
+                image = Image.open(self.image)
+                resize_image = image.resize((10, 10))
+                img = ImageTk.PhotoImage(resize_image)
+                app.canvas.create_image(0,0,image=img)
+            except:
+                pass
 class Model(object):
     instances = []
     def __init__(self,x=0,y=0,z=0,model = [],enable = True,visible = True):
@@ -78,10 +118,10 @@ class Model(object):
                     swapped = True
         self.model = l
 
-    def update(self):
+    def update(self,app):
         pass
 
-    def start(self):
+    def start(self,app):
         pass
     
     def CalculateModel(self):
@@ -120,11 +160,14 @@ class Model(object):
             i.position[1] = self.y + i.default_pos[1]
             i.position[2] = self.z + i.default_pos[2]
     def drawn(self,app):
+        m = int((app.ratio_sc_y+app.ratio_sc_x)/2)
+        if m <=0:
+            m=1
         direction_x = app.direction[0]
         zr = self.position[2] - app.camera[2]
         xr = self.position[0] - app.camera[0]
         rot_z = zr*cos(direction_x)-xr*sin(direction_x)
-        if rot_z > 1 and app.distance(self.position) < 50:
+        if rot_z > 1*m and app.distance(self.position) < 50:
             self.CalculatePosV()
             if self.enable == True:
                 for i in self.model:
@@ -132,7 +175,7 @@ class Model(object):
                     zr = i.position[2] - app.camera[2]
                     xr = i.position[0] - app.camera[0]
                     rot_z = zr*cos(direction_x)-xr*sin(direction_x)
-                    if rot_z > 1 and app.distance(i.position) < 50:
+                    if rot_z > 1*m and app.distance(i.position) < 50:
                         if self.visible == True:
                             if i.north_enable:
                                 a = i.distance(i.vec_north)
@@ -193,7 +236,7 @@ class Model(object):
         return self.position[2]
             
 class Test(Model):
-    def update(self):
+    def update(self,app):
         self.Time = time.time()
         if self.distance(self.goal) <= 10:
             self.goal = [randint(0,50),randint(0,50),randint(0,50)]
@@ -205,7 +248,7 @@ class Test(Model):
         self.position[2]+=z
         self.timeD = (Time-lastTime)
         self.lastTime = self.Time
-    def start(self):
+    def start(self,app):
         self.goal = [randint(0,90),randint(0,90),randint(0,90)]
         self.Time = time.time()
         self.lastTime = time.time()
@@ -436,7 +479,7 @@ class Voxel(object):
         return [x-0.5,y,z]
 
 class Application():
-    def __init__(self,x=0,y=0,z=0,rx=0,ry=0,rz=0,ratiox= 192,ratioy=108):
+    def __init__(self,x=0,y=0,z=0,rx=0,ry=0,rz=0,ratiox= 1920,ratioy=1080):
         self.screen = tk.Tk()
         self.screen.width = ratiox+4
         self.screen.height = ratioy+4
@@ -445,13 +488,13 @@ class Application():
         self.ratio_sc_x = (self.screen.winfo_width()-4)/self.default_ratio[0]
         self.ratio_sc_y = (self.screen.winfo_height()-4)/self.default_ratio[1]
         self.canvas.pack()
-        self.screen_distance = 180
+        self.screen_distance = 160
         self.camera = [x,y,z]
         self.td = 0
         self.direction = [rx,ry,rz]
     def run(self):
         list(map(lambda x:x.calculateVisi(),Voxel.instances))
-        list(map(lambda x:x.start(),Model.instances))
+        list(map(lambda x:x.start(self),Model.instances))
 
     def calculate_ratio(self):
         self.ratio_sc_x = (self.screen.winfo_width()-4)/self.default_ratio[0]
@@ -467,7 +510,8 @@ class Application():
         list(map(lambda x:x.drawn(self),GUI.instances))
 
     def Update(self):
-        list(map(lambda x:x.update(),Model.instances))
+        list(map(lambda x:x.update(self),Model.instances))
+        list(map(lambda x:x.update(self),GUI.instances))
         
     def distance(self,cube):
         xr = cube[0] - self.camera[0]
@@ -476,10 +520,13 @@ class Application():
         z_distance = sqrt((xr**2)+(zr**2))
         return sqrt((z_distance**2)+(yr**2))
     def get_x_screen(self,posPoint,rotation):
+        m = int((self.ratio_sc_y+self.ratio_sc_x)/2)
+        if m <=0:
+            m=1
         x = 0
-        xr = posPoint[0] - self.camera[0]
-        yr = posPoint[1] - self.camera[1]
-        zr = posPoint[2] - self.camera[2]
+        xr = posPoint[0] - self.camera[0] * m
+        yr = posPoint[1] - self.camera[1] * m
+        zr = posPoint[2] - self.camera[2] * m
         try:
             direction_x = self.direction[0]
             direction_y = self.direction[1]
@@ -490,10 +537,13 @@ class Application():
             x = 0
         return x
     def get_y_screen(self,posPoint,rotation):
+        m = int((self.ratio_sc_y+self.ratio_sc_x)/2)
+        if m <=0:
+            m=1
         x = 0
-        xr = posPoint[0] - self.camera[0]
-        yr = posPoint[1] - self.camera[1]
-        z = posPoint[2] - self.camera[2]
+        xr = posPoint[0] - self.camera[0]*m
+        yr = posPoint[1] - self.camera[1]*m
+        z = posPoint[2] - self.camera[2]*m
         try:
             direction_x = self.direction[0]
             direction_y = self.direction[1]
@@ -503,14 +553,14 @@ class Application():
             y = 0
         return y
     def drawnF(self,Face,Color):
-        self.canvas.create_polygon(self.get_x_screen(Face[0],0)+(self.screen.winfo_width()-4)/2,
-                                   self.get_y_screen(Face[0],0)+(self.screen.winfo_height()-4)/2,
-                                           self.get_x_screen(Face[1],0)+(self.screen.winfo_width()-4)/2,
-                                   self.get_y_screen(Face[1],0)+(self.screen.winfo_height()-4)/2,
-                                           self.get_x_screen(Face[3],0)+(self.screen.winfo_width()-4)/2
-                                   ,self.get_y_screen(Face[3],0)+(self.screen.winfo_height()-4)/2,
-                                           self.get_x_screen(Face[2],0)+(self.screen.winfo_width()-4)/2,
-                                   self.get_y_screen(Face[2],0)+(self.screen.winfo_height()-4)/2,
+        self.canvas.create_polygon(self.get_x_screen(Face[0],0)*self.ratio_sc_x+(self.screen.winfo_width()-4)/2,
+                                   self.get_y_screen(Face[0],0)*self.ratio_sc_y+(self.screen.winfo_height()-4)/2,
+                                           self.get_x_screen(Face[1],0)*self.ratio_sc_x+(self.screen.winfo_width()-4)/2,
+                                   self.get_y_screen(Face[1],0)*self.ratio_sc_y+(self.screen.winfo_height()-4)/2,
+                                           self.get_x_screen(Face[3],0)*self.ratio_sc_x+(self.screen.winfo_width()-4)/2
+                                   ,self.get_y_screen(Face[3],0)*self.ratio_sc_y+(self.screen.winfo_height()-4)/2,
+                                           self.get_x_screen(Face[2],0)*self.ratio_sc_x+(self.screen.winfo_width()-4)/2,
+                                   self.get_y_screen(Face[2],0)*self.ratio_sc_y+(self.screen.winfo_height()-4)/2,
                                            fill=Color)
         
 if __name__=="__main__":
@@ -529,7 +579,8 @@ if __name__=="__main__":
     app.camera[1] = 0
     lastD = time.time()/1000
     app.run()
-    g = Label()
+    g = Label(x=0)
+    b = Button(x=20,text="button")
     lastj = keyboard.is_pressed('f')
     j = keyboard.is_pressed('f')
     while True:
@@ -544,7 +595,6 @@ if __name__=="__main__":
         mousePos = mouse.get_position()
         if doProcess:
             app.canvas.delete("all")
-            g.drawn(app)
             if keyboard.is_pressed('w'):
                 app.camera[0]-= 0.5*sin(app.direction[0])*timeD*12
                 app.camera[2]+= 0.5*cos(app.direction[0])*timeD*12
