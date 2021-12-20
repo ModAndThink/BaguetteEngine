@@ -33,8 +33,52 @@
   
     So now we have sawn the voxels but if you want to create for example a zombie, it's would be hard to do it. So i introduce you the model, it can move a structure of voxel, run code when the game, ect...
   
-  The arguments:
+  The arguments :
   * **x**
   * **y**
   * **z**
   * **model** : you need to enter here a list of voxel with the argument voxel_type set to ```"model"``` or you would get an error
+  * **enable**
+  * **visible**
+  
+  The values :
+  * **position**
+  * **enable**
+  * **visible**
+  * **model** : list who contain the voxel who constitue the model
+  
+  The methods :
+  * **distance(a)** : get the distance between the position a (```[x,y,z]```) and the model's position
+  * **start(self,app)** : run code when the application is start (we would see that later). The app argument is for get the application object
+  * **update(self,app)** : run code at every update.
+  
+  So now we know the basic of the 3D engine, we need to know of to code a game. The object who would use is Application. Here we would find the camera who is a position (```[x,y,z]```). So here's how you need to organize your code :
+
+```python
+from BaguetteEngine import *
+  
+#create the Application object
+app = Application.Application()
+  
+model_x = [Application.Voxel(voxel_type="model")]
+  
+#Create a new object from the object Model
+class MyModel(Application.Model):
+    def start(self,app):
+        self.v = 0
+    def update(self,app):
+      self.v+=0.01
+      self.position[1] = Application.sin(self.v)*10
+  
+MyModel(z=3,model = model_x)
+
+app.screen_distance = 100 
+#Initialize all
+app.run()
+  
+while True:
+    app.canvas.delete("all")
+    app.Update()
+    app.drawn_element()
+    app.screen.update()
+```
