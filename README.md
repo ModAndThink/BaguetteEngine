@@ -102,3 +102,31 @@ Methods :
 #### The client
 
 Parameters :
+* **port** : the port of the server where the client would connect
+* **ip** : the ip of the server
+
+Values :
+* **port**
+* **ip**
+* **ClientNumber** : the number of client (i would explain later of to update it)
+* **VCN** : boolean who say if the value ClientNumber have been update
+
+Methods :
+* **send(msg)** : send a message to the other client
+* **UpdateValue(lm)** : i would come to it later
+* **run** : start the client
+* **start** : execute code when the run method is call
+* **left** : disconnect the client
+
+Now we know more the objects client and server but how all is working ? To start , the messages are divide into two part : TheAction|value. The first part is about the content of the message (if it's the update of the position of a player for example), the next part is the value (the new position of the player). All are in string format. The function UpdateValue is for treat the message . The lm value is a list who contain the two famous part of the message. For example, for threat the player position, we can do that : 
+
+```python
+from BaguetteEngine import *
+
+the_score_of_the_ennemi
+
+class Client(Client.Client):
+  def UpdateValue(self,lm):
+    if lm[0] == "new_score":
+      the_score_of_the_ennemi = lm[1]
+```
