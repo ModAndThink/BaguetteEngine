@@ -82,3 +82,6 @@ while True:
     app.drawn_element()
     app.screen.update()
 ```
+### How do i do to create a multiplayer game ?
+  Before we start anything, i would to remenber that the use of public adress can expose to danger, so use a server own by compagnie that you can trust or use local adress. 
+  So , for create your multiplayer game, you two objects, the ```Server``` and the ```Client``` (i think here it's not complicated). The server would have for function to send messages of client to the other (if a client send a message for said that he walk and the server would relai the message to the other client).
