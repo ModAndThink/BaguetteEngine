@@ -84,4 +84,21 @@ while True:
 ```
 ### How do i do to create a multiplayer game ?
   Before we start anything, i would to remenber that the use of public adress can expose to danger, so use a server own by compagnie that you can trust or use local adress. 
-  So , for create your multiplayer game, you two objects, the ```Server``` and the ```Client``` (i think here it's not complicated). The server would have for function to send messages of client to the other (if a client send a message for said that he walk and the server would relai the message to the other client).
+  So , for create your multiplayer game, you two objects, the ```Server``` and the ```Client``` (i think here it's not complicated). The server would have for function to send messages of client to the other (if a client send a message for said that he walk and the server would relai the message to the other client). So we are going to start by the most simple, the server.
+
+#### The server
+
+Parameters : 
+* **port** : the port were information go
+* **ip** : the adress to listen
+
+Value :
+* **clients** : all the clients connect
+
+Methods :
+* **start** : start the server
+* **send** : for send messages with ```msg``` the message to send and ```conn``` the recever (use the list clients).
+
+#### The client
+
+Parameters :
