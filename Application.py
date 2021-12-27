@@ -1,4 +1,4 @@
-from BaguetteEngine.Library import tkinter as tk
+import tkinter as tk
 from math import *
 from BaguetteEngine.Library.random import *
 from BaguetteEngine.Library import keyboard
