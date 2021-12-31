@@ -118,15 +118,72 @@ Methods :
 * **start** : execute code when the run method is call
 * **left** : disconnect the client
 
-Now we know more the objects client and server but how all is working ? To start , the messages are divide into two part : TheAction|value. The first part is about the content of the message (if it's the update of the position of a player for example), the next part is the value (the new position of the player). All are in string format. The function UpdateValue is for treat the message . The lm value is a list who contain the two famous part of the message. For example, for threat the player position, we can do that : 
+Now we know more the objects client and server but how all is working ? To start , the messages are divide into two part : TheAction|value. The first part is about the content of the message (if it's the update of the position of a player for example), the next part is the value (the new position of the player). All are in string format. The function UpdateValue is for treat the message . The lm value is a list who contain the two famous part of the message. For example, for threat the player score in a party of two players, we can do that : 
+
+Client side :
 
 ```python
 from BaguetteEngine import *
 
-the_score_of_the_ennemi
+my_score = 0
 
-class Client(Client.Client):
-  def UpdateValue(self,lm):
-    if lm[0] == "new_score":
-      the_score_of_the_ennemi = lm[1]
+app = Application.Application()
+
+class ClientForScore(Client.Client):
+    def UpdateValue(self,lm):
+        if lm[0] == "new_score":
+            self.the_score_of_the_ennemi = int(lm[1])
+    def start(self):
+        self.the_score_of_the_ennemi = 0
+
+class ScoreLabel(Application.Label):
+    def update(self,app):
+        self.text = str(app.Cs.the_score_of_the_ennemi)+" : "+str(my_score)
+
+try:
+    app.Cs = ClientForScore(ip = "192.168.1.64")
+    app.Cs.run()
+    
+    #here we send a special protocol for get the current number of client
+    app.Cs.send("TOTAL_CLIENT")
+    while not app.Cs.VCN:
+        pass
+      
+    if app.Cs.ClientNumber > 2:
+        print(app.Cs.ClientNumber)
+        print("party full")
+        app.Cs.left()
+        ee
+      
+    if app.Cs.ClientNumber == 1:
+        print("waiting for a another player")
+        while app.Cs.ClientNumber < 2:
+            app.Cs.send("TOTAL_CLIENT")
+            while not app.Cs.VCN:
+                pass
+            app.Cs.VCN = False
+      
+    print("We're ready")
+except:
+  print("the ip is invalide or the server is offline")
+ScoreLabel(x=100)
+
+while True:
+    app.canvas.delete("all")
+    app.Update()
+    if Application.keyboard.is_pressed('space'):
+        my_score+=1
+        app.Cs.send("new_score|"+str(my_score))
+    app.drawn_element()
+    app.screen.update()
+
+```
+
+Server side :
+
+```python
+from BaguetteEngine import *
+
+ServerScore = Server.Server()
+ServerScore.start()
 ```
