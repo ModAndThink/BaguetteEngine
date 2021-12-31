@@ -31,6 +31,7 @@
   * **y** : return the y position of the voxel
   * **z** : return the z position of the voxel
   
+  note : DONT use voxel, they dont drawn correctly with the models.
     So now we have sawn the voxels but if you want to create for example a zombie, it's would be hard to do it. So i introduce you the model, it can move a structure of voxel, run code when the game, ect...
   
   The arguments :
