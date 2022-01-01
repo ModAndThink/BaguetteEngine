@@ -142,7 +142,7 @@ class ScoreLabel(Application.Label):
         self.text = str(app.Cs.the_score_of_the_ennemi)+" : "+str(my_score)
 
 try:
-    app.Cs = ClientForScore(ip = "192.168.1.64")
+    app.Cs = ClientForScore(ip = "0.0.0.0")
     app.Cs.run()
     
     #here we send a special protocol for get the current number of client
