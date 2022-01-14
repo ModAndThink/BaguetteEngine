@@ -1,9 +1,11 @@
-import tkinter as tk
+from BaguetteEngine.Library import tkinter as tk
 from math import *
 from BaguetteEngine.Library.random import *
 from BaguetteEngine.Library import keyboard
 from BaguetteEngine.Library import mouse
+import threading
 import time
+import BaguetteEngine.Display as d
 
 colorList = ["red","blue","green","yellow","purple","white","pink"]
 grid = []
@@ -86,14 +88,17 @@ class Image(GUI):
                 pass
 class Model(object):
     instances = []
+    visible_model = []
     def __init__(self,x=0,y=0,z=0,model = [],enable = True,visible = True):
         self.model = model
+        self.voxel_load = []
         self.position = [x,y,z]
         self.enable = enable
         self.visible = visible
         self.__class__.instances.append(self)
         self.CalculatePosV()
-        self.CalculateModel()
+        tc = threading.Thread(target=self.CalculateModel)
+        tc.start()
 
     def distance(self,position):
         xr = position[0] - self.position[0]
@@ -104,18 +109,18 @@ class Model(object):
 
     def sort_instances(app):
         swapped = True
-        l = Model.instances
+        l = Model.visible_model
         while swapped:
             swapped = False
             for i in range(len(l) - 1):
                 if app.distance(l[i].position) < app.distance(l[i + 1].position):
                     l[i], l[i + 1] = l[i + 1], l[i]
                     swapped = True
-        Model.instances = l
+        Model.visible_model = l
 
     def sort_my_model(self,app):
         swapped = True
-        l = self.model
+        l = self.voxel_load
         while swapped:
             swapped = False
             for i in range(len(l) - 1):
@@ -160,28 +165,33 @@ class Model(object):
                     i.sud_enable = False
                 if neightbour == 6:
                     i.visible = False
+
+            self.voxel_load.append(i)
+    
     def CalculatePosV(self):
         for i in self.model:
             i.position[0] = self.x + i.default_pos[0]
             i.position[1] = self.y + i.default_pos[1]
             i.position[2] = self.z + i.default_pos[2]
     def drawn(self,app):
-        m = int((app.ratio_sc_y+app.ratio_sc_x)/2)
-        if m <=0:
-            m=1
         direction_x = app.direction[0]
         zr = self.position[2] - app.camera[2]
         xr = self.position[0] - app.camera[0]
-        rot_z = zr*cos(direction_x)-xr*sin(direction_x)
-        if rot_z > 1*m and app.distance(self.position) < 50:
+        yr = self.position[1] - app.camera[1]
+        rot_z = zr*cos(app.direction[1])-xr*sin(app.direction[1])
+        rot_z = yr * sin(app.direction[0])+rot_z * cos(app.direction[0])
+        if rot_z > 1 and app.distance(self.position) < 50:
             self.CalculatePosV()
             if self.enable == True:
-                for i in self.model:
+                for i in self.voxel_load:
                     direction_x = app.direction[0]
                     zr = i.position[2] - app.camera[2]
                     xr = i.position[0] - app.camera[0]
-                    rot_z = zr*cos(direction_x)-xr*sin(direction_x)
-                    if rot_z > 1*m and app.distance(i.position) < 50:
+                    yr = i.position[1] - app.camera[1]
+                    rot_z = zr*cos(app.direction[1])-xr*sin(app.direction[1])
+                    rot_z = yr * sin(app.direction[0])+rot_z * cos(app.direction[0])
+                    #and app.distance(i.position) < 50
+                    if rot_z > 1:
                         if self.visible == True:
                             if i.north_enable:
                                 a = i.distance(i.vec_north)
@@ -190,7 +200,7 @@ class Model(object):
                                 angle = acos((a**2+c**2-b**2)/(2 *a*c))
                                 if degrees(angle) < 88:
                                     app.drawnF(i.north,i.color)
-                                
+                                    
                             if i.sud_enable:
                                 a = i.distance(i.vec_sud)
                                 b = app.distance(i.vec_sud)
@@ -205,7 +215,7 @@ class Model(object):
                                 angle = acos((a**2+c**2-b**2)/(2 *a*c))
                                 if degrees(angle) < 88:
                                     app.drawnF(i.east,i.color)
-                                
+                                    
                             if i.west_enable:
                                 a = i.distance(i.vec_west)
                                 b = app.distance(i.vec_west)
@@ -213,7 +223,7 @@ class Model(object):
                                 angle = acos((a**2+c**2-b**2)/(2 *a*c))
                                 if degrees(angle) < 88:
                                     app.drawnF(i.west,i.color)
-                            
+                                
                             if i.top_enable:
                                 a = i.distance(i.vec_top)
                                 b = app.distance(i.vec_top)
@@ -221,7 +231,7 @@ class Model(object):
                                 angle = acos((a**2+c**2-b**2)/(2 *a*c))
                                 if degrees(angle) < 88:
                                     app.drawnF(i.top,i.color)
-                    
+                        
                             if i.bottom_enable:
                                 a = i.distance(i.vec_bottom)
                                 b = app.distance(i.vec_bottom)
@@ -229,6 +239,7 @@ class Model(object):
                                 angle = acos((a**2+c**2-b**2)/(2 *a*c))
                                 if degrees(angle) < 88:
                                     app.drawnF(i.bottom,i.color)
+    
     @property
     def x(self):
         return self.position[0]
@@ -240,7 +251,23 @@ class Model(object):
     @property
     def z(self):
         return self.position[2]
-            
+
+def calculate_range(app):
+    temporair_list = []
+    for model in Model.instances:
+        zr = model.position[2] - app.camera[2]
+        yr = model.position[1] - app.camera[1]
+        xr = model.position[0] - app.camera[0]
+        rot_z = zr*cos(app.direction[1])-xr*sin(app.direction[1])
+        rot_z = yr * sin(app.direction[0])+rot_z * cos(app.direction[0])
+        if rot_z > 1 and app.distance(model.position) < 50:
+            temporair_list.append(model)
+    Model.visible_model = temporair_list
+
+def caculate_voxel_order(app):
+    for model in Model.visible_model:
+        model.sort_my_model(app)
+
 class Test(Model):
     def update(self,app):
         self.Time = time.time()
@@ -259,6 +286,7 @@ class Test(Model):
         self.Time = time.time()
         self.lastTime = time.time()
         self.timeD = (Time-lastTime)
+
         
 
 class Voxel(object):
@@ -281,6 +309,7 @@ class Voxel(object):
             self.__class__.instances.append(self)
         else:
             self.default_pos = [x,y,z]
+            self.is_check = False
 
     def distance(self,position):
         xr = position[0] - self.position[0]
@@ -484,16 +513,203 @@ class Voxel(object):
         z = self.position[2]
         return [x-0.5,y,z]
 
+class voxel_ensemble(object):
+    instances = []
+    visiblesVoxel = []
+    def __init__(self,x = 0,y = 0,z = 0,size=[1,1,1],visible = True,enable = True,color = "white"):
+        self.position = [x,y,z]
+        self.size = size
+        self.color = color
+        self.north_enable = True
+        self.sud_enable = True
+        self.top_enable = True
+        self.bottom_enable = True
+        self.east_enable = True
+        self.west_enable = True
+
+    def drawn(self,app):
+        direction_x = app.direction[0]
+        zr = self.position[2] - app.camera[2]
+        xr = self.position[0] - app.camera[0]
+        rot_z = zr*cos(direction_x)-xr*sin(direction_x)
+        # and app.distance(self.position) < 50
+        if rot_z > 1:
+                if self.north_enable:
+                    a = self.distance(self.vec_north)
+                    b = app.distance(self.vec_north)
+                    c = app.distance(self.position)
+                    angle = acos((a**2+c**2-b**2)/(2 *a*c))
+                    if degrees(angle) < 89:
+                        app.drawnF(self.north,self.color)
+                    
+                if self.sud_enable:
+                    a = self.distance(self.vec_sud)
+                    b = app.distance(self.vec_sud)
+                    c = app.distance(self.position)
+                    angle = acos((a**2+c**2-b**2)/(2 *a*c))
+                    if degrees(angle) < 89:
+                        app.drawnF(self.sud,self.color)
+                    
+                if self.east_enable:
+                    a = self.distance(self.vec_east)
+                    b = app.distance(self.vec_east)
+                    c = app.distance(self.position)
+                    angle = acos((a**2+c**2-b**2)/(2 *a*c))
+                    if degrees(angle) < 89:
+                        app.drawnF(self.east,self.color)
+                    
+                if self.west_enable:
+                    a = self.distance(self.vec_west)
+                    b = app.distance(self.vec_west)
+                    c = app.distance(self.position)
+                    angle = acos((a**2+c**2-b**2)/(2 *a*c))
+                    if degrees(angle) < 89:
+                        app.drawnF(self.west,self.color)
+                    
+                if self.top_enable:
+                    a = self.distance(self.vec_top)
+                    b = app.distance(self.vec_top)
+                    c = app.distance(self.position)
+                    angle = acos((a**2+c**2-b**2)/(2 *a*c))
+                    if degrees(angle) < 89:
+                        app.drawnF(self.top,self.color)
+                    
+                if self.bottom_enable:
+                    a = self.distance(self.vec_bottom)
+                    b = app.distance(self.vec_bottom)
+                    c = app.distance(self.position)
+                    angle = acos((a**2+c**2-b**2)/(2 *a*c))
+                    if degrees(angle) < 89:
+                        app.drawnF(self.bottom,self.color)
+
+    def distance(self,position):
+        xr = position[0] - self.position[0]
+        yr = position[1] - self.position[1]
+        zr = position[2] - self.position[2]
+        z_distance = sqrt((xr**2)+(zr**2))
+        return sqrt((z_distance**2)+(yr**2))
+
+    @property
+    def x(self):
+        return self.position[0]
+
+    @property
+    def y(self):
+        return self.position[1]
+
+    @property
+    def z(self):
+        return self.position[2]
+    
+    @property
+    def north(self):
+        x = self.position[0]
+        y = self.position[1]
+        z = self.position[2]
+        return [[(self.size[0]/2)+x,(self.size[1]/2)+y,(self.size[2]/2)+z],
+                [(self.size[0]/2)+x,(self.size[1]/2)*-1+y,(self.size[2]/2)+z],
+                [(self.size[0]/2)*-1+x,(self.size[1]/2)+y,(self.size[2]/2)+z],
+                [(self.size[0]/2)*-1+x,(self.size[1]/2)*-1+y,(self.size[2]/2)+z]]
+    
+    @property
+    def vec_north(self):
+        x = self.position[0]
+        y = self.position[1]
+        z = self.position[2]
+        return [x,y,z+(self.size[2]/2)]
+    @property
+    def sud(self):
+        x = self.position[0]
+        y = self.position[1]
+        z = self.position[2]
+        return [[(self.size[0]/2)+x,(self.size[1]/2)+y,(self.size[2]/2)*-1+z],
+                [(self.size[0]/2)+x,(self.size[1]/2)*-1+y,(self.size[2]/2)*-1+z],
+                [(self.size[0]/2)*-1+x,(self.size[1]/2)+y,(self.size[2]/2)*-1+z],
+                [(self.size[0]/2)*-1+x,(self.size[1]/2)*-1+y,(self.size[2]/2)*-1+z]]
+
+    @property
+    def vec_sud(self):
+        x = self.position[0]
+        y = self.position[1]
+        z = self.position[2]
+        return [x,y,z-(self.size[2]/2)]
+    
+    @property
+    def top(self):
+        x = self.position[0]
+        y = self.position[1]
+        z = self.position[2]
+        return [[(self.size[0]/2)+x,(self.size[1]/2)+y,(self.size[2]/2)+z],
+                [(self.size[0]/2)+x,(self.size[1]/2)+y,(self.size[2]/2)*-1+z],
+                [(self.size[0]/2)*-1+x,(self.size[1]/2)+y,(self.size[2]/2)+z],
+                [(self.size[0]/2)*-1+x,(self.size[1]/2)+y,(self.size[2]/2)*-1+z]]
+    @property
+    def vec_top(self):
+        x = self.position[0]
+        y = self.position[1]
+        z = self.position[2]
+        return [x,y+(self.size[1]/2),z]
+    
+    @property
+    def bottom(self):
+        x = self.position[0]
+        y = self.position[1]
+        z = self.position[2]
+        return [[(self.size[0]/2)+x,(self.size[1]/2)*-1+y,(self.size[2]/2)+z],
+                [(self.size[0]/2)+x,(self.size[1]/2)*-1+y,(self.size[2]/2)*-1+z],
+                [(self.size[0]/2)*-1+x,(self.size[1]/2)*-1+y,(self.size[2]/2)+z],
+                [(self.size[0]/2)*-1+x,(self.size[1]/2)*-1+y,(self.size[2]/2)*-1+z]]
+    @property
+    def vec_bottom(self):
+        x = self.position[0]
+        y = self.position[1]
+        z = self.position[2]
+        return [x,y-(self.size[1]/2),z]
+    @property
+    def east(self):
+        x = self.position[0]
+        y = self.position[1]
+        z = self.position[2]
+        return [[(self.size[0]/2)+x,(self.size[1]/2)*-1+y,(self.size[2]/2)+z],
+                [(self.size[0]/2)+x,(self.size[1]/2)+y,(self.size[2]/2)+z],
+                [(self.size[0]/2)+x,(self.size[1]/2)*-1+y,(self.size[2]/2)*-1+z],
+                [(self.size[0]/2)+x,(self.size[1]/2)+y,(self.size[2]/2)*-1+z]]
+    @property
+    def vec_east(self):
+        x = self.position[0]
+        y = self.position[1]
+        z = self.position[2]
+        return [x+(self.size[0]/2),y,z]
+
+    @property
+    def west(self):
+        x = self.position[0]
+        y = self.position[1]
+        z = self.position[2]
+        return [[(self.size[0]/2)*-1+x,(self.size[1]/2)*-1+y,(self.size[2]/2)+z],
+                [(self.size[0]/2)*-1+x,(self.size[1]/2)+y,(self.size[2]/2)+z],
+                [(self.size[0]/2)*-1+x,(self.size[1]/2)*-1+y,(self.size[2]/2)*-1+z],
+                [(self.size[0]/2)*-1+x,(self.size[1]/2)+y,(self.size[2]/2)*-1+z]]
+    @property
+    def vec_west(self):
+        x = self.position[0]
+        y = self.position[1]
+        z = self.position[2]
+        return [x-(self.size[0]/2),y,z]
+
 class Application():
     def __init__(self,x=0,y=0,z=0,rx=0,ry=0,rz=0,ratiox= 1920,ratioy=1080):
-        self.screen = tk.Tk()
-        self.screen.width = ratiox+4
-        self.screen.height = ratioy+4
-        self.canvas = tk.Canvas(master=self.screen,bg = "black",width = ratiox,height = ratioy)
+        #self.screen = tk.Tk()
+        width = ratiox+4
+        height = ratioy+4
+        self.ratio_sc_x = width
+        self.ratio_sc_y = height
+        '''self.canvas = tk.Canvas(master=self.screen,bg = "black",width = ratiox,height = ratioy)
         self.default_ratio = [ratiox,ratioy]
         self.ratio_sc_x = (self.screen.winfo_width()-4)/self.default_ratio[0]
         self.ratio_sc_y = (self.screen.winfo_height()-4)/self.default_ratio[1]
-        self.canvas.pack()
+        self.canvas.pack()'''
+        self.window = d.CreateWindow(width = width, height = height)
         self.screen_distance = 160
         self.camera = [x,y,z]
         self.td = 0
@@ -507,15 +723,20 @@ class Application():
         self.ratio_sc_y = (self.screen.winfo_height()-4)/self.default_ratio[1]
         self.canvas["width"] = (self.screen.winfo_width()-4)
         self.canvas["height"] = (self.screen.winfo_height()-4)
+    
     def drawn_element(self):
-        self.calculate_ratio()
-        Model.sort_instances(self)
-        list(map(lambda x:x.sort_my_model(self),Model.instances))
+        td = threading.Thread(target = calculate_range,args=(self,))
+        td.start()
+        te = threading.Thread(target = Model.sort_instances,args=(self,))
+        te.start()
+        tf = threading.Thread(target = caculate_voxel_order,args=(self,))
+        tf.start()
         #list(map(lambda x:x.drawn(self),Voxel.visiblesVoxel))
-        list(map(lambda x:x.drawn(self),Model.instances))
-        list(map(lambda x:x.drawn(self),GUI.instances))
+        list(map(lambda x:x.drawn(self),Model.visible_model))
+        #list(map(lambda x:x.drawn(self),GUI.instances))
 
     def Update(self):
+        d.glfw.swap_buffers(self.window)
         list(map(lambda x:x.update(self),Model.instances))
         list(map(lambda x:x.update(self),GUI.instances))
         
@@ -526,48 +747,60 @@ class Application():
         z_distance = sqrt((xr**2)+(zr**2))
         return sqrt((z_distance**2)+(yr**2))
     def get_x_screen(self,posPoint,rotation):
-        m = int((self.ratio_sc_y+self.ratio_sc_x)/2)
-        if m <=0:
-            m=1
         x = 0
-        xr = posPoint[0] - self.camera[0] * m
-        yr = posPoint[1] - self.camera[1] * m
-        zr = posPoint[2] - self.camera[2] * m
+        xr = posPoint[0] - self.camera[0]
+        yr = posPoint[1] - self.camera[1]
+        zr = posPoint[2] - self.camera[2]
         try:
             direction_x = self.direction[0]
             direction_y = self.direction[1]
-            rot_x = zr*sin(direction_x)+xr*cos(direction_x)
-            rot_z = zr*cos(direction_x)-xr*sin(direction_x)
+            rot_x = zr*sin(self.direction[1])+xr*cos(self.direction[1])
+            rot_z = zr*cos(self.direction[1])-xr*sin(self.direction[1])
+
+            rot_z = yr * sin(self.direction[0])+rot_z * cos(self.direction[0])
+            
             x = (self.screen_distance/rot_z)*rot_x
         except:
             x = 0
         return x
     def get_y_screen(self,posPoint,rotation):
-        m = int((self.ratio_sc_y+self.ratio_sc_x)/2)
-        if m <=0:
-            m=1
         x = 0
-        xr = posPoint[0] - self.camera[0]*m
-        yr = posPoint[1] - self.camera[1]*m
-        z = posPoint[2] - self.camera[2]*m
+        xr = posPoint[0] - self.camera[0]
+        yr = posPoint[1] - self.camera[1]
+        z = posPoint[2] - self.camera[2]
         try:
             direction_x = self.direction[0]
             direction_y = self.direction[1]
-            rot_z = z*cos(direction_x)-xr*sin(direction_x)
-            y = (self.screen_distance/rot_z)*(yr*-1) 
+
+            rot_z = z*cos(self.direction[1])-xr*sin(self.direction[1])
+
+            rot_z = yr * sin(self.direction[0])+rot_z * cos(self.direction[0])
+            rot_y = yr * cos(self.direction[0])-rot_z * sin(self.direction[0])
+            
+            y = (self.screen_distance/rot_z)*(rot_y) 
         except:
             y = 0
         return y
     def drawnF(self,Face,Color):
-        self.canvas.create_polygon(self.get_x_screen(Face[0],0)*self.ratio_sc_x+(self.screen.winfo_width()-4)/2,
-                                   self.get_y_screen(Face[0],0)*self.ratio_sc_y+(self.screen.winfo_height()-4)/2,
-                                           self.get_x_screen(Face[1],0)*self.ratio_sc_x+(self.screen.winfo_width()-4)/2,
-                                   self.get_y_screen(Face[1],0)*self.ratio_sc_y+(self.screen.winfo_height()-4)/2,
-                                           self.get_x_screen(Face[3],0)*self.ratio_sc_x+(self.screen.winfo_width()-4)/2
-                                   ,self.get_y_screen(Face[3],0)*self.ratio_sc_y+(self.screen.winfo_height()-4)/2,
-                                           self.get_x_screen(Face[2],0)*self.ratio_sc_x+(self.screen.winfo_width()-4)/2,
-                                   self.get_y_screen(Face[2],0)*self.ratio_sc_y+(self.screen.winfo_height()-4)/2,
-                                           fill=Color)
+        try:
+            d.DrawTriangle(pointA = [self.get_x_screen(Face[0],0)/100, self.get_y_screen(Face[0],0)/100,0],
+                           pointB = [self.get_x_screen(Face[1],0)/100, self.get_y_screen(Face[1],0)/100,0],
+                           pointC = [self.get_x_screen(Face[2],0)/100, self.get_y_screen(Face[2],0)/100,0],color=Color)
+            d.DrawTriangle(pointA = [self.get_x_screen(Face[3],0)/100, self.get_y_screen(Face[3],0)/100,0],
+                           pointB = [self.get_x_screen(Face[1],0)/100, self.get_y_screen(Face[1],0)/100,0],
+                           pointC = [self.get_x_screen(Face[2],0)/100, self.get_y_screen(Face[2],0)/100,0],color=Color)
+        except:
+            d.DrawTriangle(pointA = [self.get_x_screen(Face[0],0)/100, self.get_y_screen(Face[0],0)/100,0],
+                           pointB = [self.get_x_screen(Face[1],0)/100, self.get_y_screen(Face[1],0)/100,0],
+                           pointC = [self.get_x_screen(Face[2],0)/100, self.get_y_screen(Face[2],0)/100,0])
+            d.DrawTriangle(pointA = [self.get_x_screen(Face[3],0)/100, self.get_y_screen(Face[3],0)/100,0],
+                           pointB = [self.get_x_screen(Face[1],0)/100, self.get_y_screen(Face[1],0)/100,0],
+                           pointC = [self.get_x_screen(Face[2],0)/100, self.get_y_screen(Face[2],0)/100,0])
+        #d.DrawTriangle()
+    def clear(self):
+        d.glfw.poll_events()
+        d.glClear(d.GL_COLOR_BUFFER_BIT)
+        
         
 if __name__=="__main__":
     app = Application()
@@ -576,22 +809,23 @@ if __name__=="__main__":
     lastMousePos = mouse.get_position()
     doProcess = True
     mousePos = mouse.get_position()
-    l = [Voxel(y=1,voxel_type = "model",color="cyan"),
-         Voxel(voxel_type = "model",color="grey"),Voxel(x=1,voxel_type = "model",color="grey"),Voxel(x=-1,voxel_type = "model",color="grey"),
-         Voxel(z=1,voxel_type = "model",color="grey"),Voxel(x=1,z=1,voxel_type = "model",color="grey"),Voxel(x=-1,z=1,voxel_type = "model",color="grey"),
-         Voxel(z=-1,voxel_type = "model",color="grey"),Voxel(x=1,z=-1,voxel_type = "model",color="grey"),Voxel(x=-1,z=-1,voxel_type = "model",color="grey")]
+    l = [Voxel(y=1,voxel_type = "model",color=[0,171,255,0.28]),
+         Voxel(voxel_type = "model",color=[0.188,0.188,0.188,1]),Voxel(x=1,voxel_type = "model",color=[0.188,0.188,0.188,1]),Voxel(x=-1,voxel_type = "model",color=[0.188,0.188,0.188,1]),
+         Voxel(z=1,voxel_type = "model",color=[0.188,0.188,0.188,1]),Voxel(x=1,z=1,voxel_type = "model",color=[0.188,0.188,0.188,1]),Voxel(x=-1,z=1,voxel_type = "model",color=[0.188,0.188,0.188,1]),
+         Voxel(z=-1,voxel_type = "model",color=[0.188,0.188,0.188,1]),Voxel(x=1,z=-1,voxel_type = "model",color=[0.188,0.188,0.188,1]),Voxel(x=-1,z=-1,voxel_type = "model",color=[0.188,0.188,0.188,1])]
     for i in range(0,10):
         Test(model = l,z=randint(i,30),y=randint(i,30),x=randint(i,30))
+    Model(model = l,z=10)
     app.camera[1] = 0
     lastD = time.time()/1000
     app.run()
     g = Label(x=0)
     b = Button(x=200,text="button")
-    lastj = keyboard.is_pressed('f')
-    j = keyboard.is_pressed('f')
-    while True:
+    lastj = False
+    j = False
+    while not d.glfw.window_should_close(app.window):
         Time = time.time()
-        j = keyboard.is_pressed('f')
+        j = False
         if j:
             if j != lastj:
                 if doProcess:
@@ -600,30 +834,33 @@ if __name__=="__main__":
                     doProcess = True
         mousePos = mouse.get_position()
         if doProcess:
-            app.canvas.delete("all")
+            app.clear()
+            #test.drawn(app)
             if keyboard.is_pressed('w'):
-                app.camera[0]-= 0.5*sin(app.direction[0])*timeD*12
-                app.camera[2]+= 0.5*cos(app.direction[0])*timeD*12
+                app.camera[0]-= 0.5*sin(app.direction[1])*timeD*40
+                app.camera[2]+= 0.5*cos(app.direction[1])*timeD*40
             if keyboard.is_pressed('s'):
-                app.camera[0]+= 0.5*sin(app.direction[0])*timeD*12
-                app.camera[2]-= 0.5*cos(app.direction[0])*timeD*12
+                app.camera[0]+= 0.5*sin(app.direction[1])*timeD*40
+                app.camera[2]-= 0.5*cos(app.direction[1])*timeD*40
             if keyboard.is_pressed('d'):
-                app.camera[2]+= 0.5*sin(app.direction[0])*timeD*12
-                app.camera[0]+= 0.5*cos(app.direction[0])*timeD*12
+                app.camera[2]+= 0.5*sin(app.direction[1])*timeD*40
+                app.camera[0]+= 0.5*cos(app.direction[1])*timeD*40
             if keyboard.is_pressed('a'):
-                app.camera[2]-= 0.5*sin(app.direction[0])*timeD*12
-                app.camera[0]-= 0.5*cos(app.direction[0])*timeD*12
+                app.camera[2]-= 0.5*sin(app.direction[1])*timeD*40
+                app.camera[0]-= 0.5*cos(app.direction[1])*timeD*40
             if keyboard.is_pressed('space'):
                 app.camera[1]+= 1*timeD*7
             if keyboard.is_pressed('shift'):
                 app.camera[1]-= 1*timeD*7
-            app.direction[0]-=(mousePos[0]-lastMousePos[0])/100
-            app.direction[1]-=(mousePos[1]-lastMousePos[1])/100
+            app.direction[1]-=(mousePos[0]-lastMousePos[0])/100
+            app.direction[0]-=(mousePos[1]-lastMousePos[1])/100
             app.drawn_element()
             app.Update()
-        app.screen.update()
         lastMousePos = mousePos
         timeD = (Time-lastTime)
         lastj = j
         lastTime = Time
+        
         time.sleep(0.02)
+    d.glfw.terminate()
+
